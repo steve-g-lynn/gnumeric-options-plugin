@@ -17,6 +17,8 @@ The default is also changed for the binomial model. In addition, I changed the n
 
 I added an additional function opt_binomial_eqprob, that applies the equal probabilities binomial model to value options.
 
+I also added a few convenience functions: opt_bs_call to find the Black-Scholes value of a call, and opt_bs_put to find the Black-Scholes value of a put. 
+
 To apply these customizations:
 
 Copy the files "options.c" and "plugin.xml.in" in this repository to the "plugins/fn-derivatives" directory in your gnumeric source (you may wish to back up the original versions), then recompile your gnumeric.
