@@ -1963,45 +1963,41 @@ static GnmFuncHelp const help_opt_fixed_strk_lkbk[] = {
 };
 
 
+/* Binomal tree valuation: general */
 
-/* Binomial Tree valuation: CRR model */
-static GnmValue *
-opt_binomial_crr(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
+static gnm_float
+opt_binomial1(OptionType amer_euro_flag,
+	OptionSide call_put_flag,
+	gnm_float n,
+	gnm_float s,
+	gnm_float x,
+	gnm_float t,
+	gnm_float r,
+	gnm_float v,
+	gnm_float b,
+	gnm_float u,
+	gnm_float d )
 {
-	OptionType amer_euro_flag = option_type(value_peek_string(argv[0]));
-	OptionSide call_put_flag = option_side (value_peek_string(argv[1]));
-	gnm_float n = gnm_floor (value_get_as_float (argv[2]));
-	gnm_float s = value_get_as_float (argv[3]);
-	gnm_float x = value_get_as_float (argv[4]);
-	gnm_float t = value_get_as_float (argv[5]);
-	gnm_float r = value_get_as_float (argv[6]);
-	gnm_float v = value_get_as_float (argv[7]);
-	gnm_float b = argv[8] ? value_get_as_float (argv[8]) : value_get_as_float (argv[6]);
-
+	
 	gnm_float *value_array;
-	gnm_float u, d, p, dt, Df, temp1, temp2, gf_result;
-	gint i, j, z;
-
-	if (n < 0 || n > 100000)
-		return value_new_error_NUM (ei->pos);
+	gnm_float p, dt, Df, temp1, temp2, gf_result;
+	gint i, j, z=0;
 
 	if (OS_Call == call_put_flag)
 		z = 1;
         else if (OS_Put == call_put_flag)
 		z = -1;
-	else
-		return value_new_error_NUM (ei->pos);
-
-	if (OT_Error == amer_euro_flag)
-		return value_new_error_NUM (ei->pos);
+	else 
+		return -999.9; /* error code */
 
 	value_array = (gnm_float *) g_try_malloc ((n + 2)* sizeof(gnm_float));
+	
 	if (value_array == NULL)
-		return value_new_error_NUM (ei->pos);
+		return -999.9;  /* error code */
 
 	dt = t / n;
-	u = gnm_exp (v * gnm_sqrt (dt));
-	d = 1.0 / u;
+/*	u = gnm_exp (v * gnm_sqrt (dt));
+	d = 1.0 / u; */
 	p = (gnm_exp (b * dt) - d) / (u - d);
 	Df = gnm_exp (-r * dt);
 
@@ -2024,6 +2020,44 @@ opt_binomial_crr(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
 	}
 	gf_result = value_array[0];
 	g_free (value_array);
+	return gf_result;
+}
+
+
+
+/* Binomial Tree valuation: CRR model */
+static GnmValue *
+opt_binomial_crr(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
+{
+	OptionType amer_euro_flag = option_type(value_peek_string(argv[0]));
+	OptionSide call_put_flag = option_side (value_peek_string(argv[1]));
+	gnm_float n = gnm_floor (value_get_as_float (argv[2]));
+	gnm_float s = value_get_as_float (argv[3]);
+	gnm_float x = value_get_as_float (argv[4]);
+	gnm_float t = value_get_as_float (argv[5]);
+	gnm_float r = value_get_as_float (argv[6]);
+	gnm_float v = value_get_as_float (argv[7]);
+	gnm_float b = argv[8] ? value_get_as_float (argv[8]) : value_get_as_float (argv[6]);
+
+	gnm_float u, d, dt, gf_result;
+
+	if (n < 0 || n > 100000)
+		return value_new_error_NUM (ei->pos);
+
+	if ( (OS_Call != call_put_flag) && (OS_Put != call_put_flag) )
+		return value_new_error_NUM (ei->pos);
+
+	if (OT_Error == amer_euro_flag)
+		return value_new_error_NUM (ei->pos);
+
+	dt = t / n;
+	u = gnm_exp (v * gnm_sqrt (dt));
+	d = 1.0 / u;
+
+	gf_result = opt_binomial1(amer_euro_flag, call_put_flag, n, s, x, t, r, v, b, u, d) ;
+	if ( gf_result == -999.9) 
+		return value_new_error_NUM (ei->pos); 
+
 	return value_new_float (gf_result);
 }
 
@@ -2059,27 +2093,17 @@ opt_binomial_eqprob(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
 	gnm_float b = argv[8] ? value_get_as_float (argv[8]) : value_get_as_float (argv[6]);
 	
 
-
-	gnm_float *value_array;
-	gnm_float u, d, p, dt, Df, temp1, temp2, gf_result, X;
-	gint i, j, z;
+	gnm_float u, d, dt, gf_result, X;
 
 	if (n < 0 || n > 100000)
 		return value_new_error_NUM (ei->pos);
 
-	if (OS_Call == call_put_flag)
-		z = 1;
-        else if (OS_Put == call_put_flag)
-		z = -1;
-	else
+	if ( (OS_Call != call_put_flag) && (OS_Put != call_put_flag) )
 		return value_new_error_NUM (ei->pos);
 
 	if (OT_Error == amer_euro_flag)
 		return value_new_error_NUM (ei->pos);
 
-	value_array = (gnm_float *) g_try_malloc ((n + 2)* sizeof(gnm_float));
-	if (value_array == NULL)
-		return value_new_error_NUM (ei->pos);
 
 	dt = t / n;
 	
@@ -2089,28 +2113,11 @@ opt_binomial_eqprob(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
 	
 	u = gnm_exp (v * gnm_sqrt (dt) + X);
 	d = gnm_exp (- v * gnm_sqrt (dt) + X);
-	p = (gnm_exp (b * dt) - d) / (u - d);
-	Df = gnm_exp (-r * dt);
+	
+	gf_result = opt_binomial1(amer_euro_flag, call_put_flag, n, s, x, t, r, v, b, u, d) ;
+	if ( gf_result == -999.9) 
+		return value_new_error_NUM (ei->pos); 
 
-	for (i = 0; i <= n; ++i) {
-		temp1 = z * (s * gnm_pow (u, i) * gnm_pow (d, (n - i)) - x);
-		value_array[i] = MAX (temp1, 0.0);
-	    }
-
-	for (j = n - 1; j > -1; --j) {
-		for (i = 0; i <= j; ++i) {
-			/*if (0==i)g_printerr("secondloop %d\n",j);*/
-			if (OT_Euro == amer_euro_flag)
-				value_array[i] = (p * value_array[i + 1] + (1.0 - p) * value_array[i]) * Df;
-			else if (OT_Amer == amer_euro_flag) {
-				temp1 = (z * (s * gnm_pow (u, i) * gnm_pow (d, (gnm_abs (i - j))) - x));
-				temp2 = (p * value_array[i + 1] + (1.0 - p) * value_array[i]) * Df;
-				value_array[i] = MAX (temp1, temp2);
-			}
-		}
-	}
-	gf_result = value_array[0];
-	g_free (value_array);
 	return value_new_float (gf_result);
 }
 
