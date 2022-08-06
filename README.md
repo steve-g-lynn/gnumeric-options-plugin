@@ -1,5 +1,5 @@
 # gnumeric-options-plugin
-minor customizations to the gnumeric fn-derivatives plugin
+Minor customizations to the gnumeric fn-derivatives plugin
 
 This includes a few minor customizations to the options plugin in gnumeric.
 
