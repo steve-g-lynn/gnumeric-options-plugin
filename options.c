@@ -2023,9 +2023,59 @@ opt_binomial1(OptionType amer_euro_flag,
 	return gf_result;
 }
 
+/* binomial lattice model Cox-Ross-Rubinstein */
+static gnm_float
+opt_binomial_crr1(OptionType amer_euro_flag,
+	OptionSide call_put_flag,
+	gnm_float n,
+	gnm_float s,
+	gnm_float x,
+	gnm_float t,
+	gnm_float r,
+	gnm_float v,
+	gnm_float b )
+{
+	gnm_float dt,u,d,gf_result;
+	dt = t / n;
+	u = gnm_exp (v * gnm_sqrt (dt));
+	d = 1.0 / u;
+
+	gf_result = opt_binomial1(amer_euro_flag, call_put_flag, n, s, x, t, r, v, b, u, d) ;
+
+	return gf_result;
+	
+}
+
+/* binomial lattice model Equal probabilities model */
+static gnm_float
+opt_binomial_eqprob1(OptionType amer_euro_flag,
+	OptionSide call_put_flag,
+	gnm_float n,
+	gnm_float s,
+	gnm_float x,
+	gnm_float t,
+	gnm_float r,
+	gnm_float v,
+	gnm_float b )
+{
+	gnm_float dt,u,d,X,gf_result;
+
+	dt = t / n;
+	
+	X = gnm_log(2) + r*dt - gnm_log ( gnm_exp (v*gnm_sqrt(dt)) + gnm_exp (-v*gnm_sqrt(dt)));
+	
+	
+	u = gnm_exp (v * gnm_sqrt (dt) + X);
+	d = gnm_exp (- v * gnm_sqrt (dt) + X);
 
 
-/* Binomial Tree valuation: CRR model */
+	gf_result = opt_binomial1(amer_euro_flag, call_put_flag, n, s, x, t, r, v, b, u, d) ;
+
+	return gf_result;
+	
+}
+
+/* Binomial Tree valuation spreadsheet function: CRR model */
 static GnmValue *
 opt_binomial_crr(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
 {
@@ -2039,7 +2089,7 @@ opt_binomial_crr(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
 	gnm_float v = value_get_as_float (argv[7]);
 	gnm_float b = argv[8] ? value_get_as_float (argv[8]) : value_get_as_float (argv[6]);
 
-	gnm_float u, d, dt, gf_result;
+	gnm_float gf_result;
 
 	if (n < 0 || n > 100000)
 		return value_new_error_NUM (ei->pos);
@@ -2050,11 +2100,8 @@ opt_binomial_crr(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
 	if (OT_Error == amer_euro_flag)
 		return value_new_error_NUM (ei->pos);
 
-	dt = t / n;
-	u = gnm_exp (v * gnm_sqrt (dt));
-	d = 1.0 / u;
 
-	gf_result = opt_binomial1(amer_euro_flag, call_put_flag, n, s, x, t, r, v, b, u, d) ;
+	gf_result = opt_binomial_crr1(amer_euro_flag, call_put_flag, n, s, x, t, r, v, b) ;
 	if ( gf_result == -999.9) 
 		return value_new_error_NUM (ei->pos); 
 
@@ -2078,7 +2125,7 @@ static GnmFuncHelp const help_opt_binomial_crr[] = {
         { GNM_FUNC_HELP_END}
 };
 
-/* Binomial Tree valuation: equal probabilities model */
+/* Binomial Tree valuation spreadsheet function: equal probabilities model */
 static GnmValue *
 opt_binomial_eqprob(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
 {
@@ -2093,7 +2140,7 @@ opt_binomial_eqprob(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
 	gnm_float b = argv[8] ? value_get_as_float (argv[8]) : value_get_as_float (argv[6]);
 	
 
-	gnm_float u, d, dt, gf_result, X;
+	gnm_float gf_result;
 
 	if (n < 0 || n > 100000)
 		return value_new_error_NUM (ei->pos);
@@ -2105,16 +2152,9 @@ opt_binomial_eqprob(GnmFuncEvalInfo *ei, GnmValue const * const *argv)
 		return value_new_error_NUM (ei->pos);
 
 
-	dt = t / n;
 	
-	X = gnm_log(2) + r*dt - 
-		gnm_log ( gnm_exp (v*gnm_sqrt(dt)) + gnm_exp (-v*gnm_sqrt(dt)));
+	gf_result = opt_binomial_eqprob1(amer_euro_flag, call_put_flag, n, s, x, t, r, v, b) ;
 	
-	
-	u = gnm_exp (v * gnm_sqrt (dt) + X);
-	d = gnm_exp (- v * gnm_sqrt (dt) + X);
-	
-	gf_result = opt_binomial1(amer_euro_flag, call_put_flag, n, s, x, t, r, v, b, u, d) ;
 	if ( gf_result == -999.9) 
 		return value_new_error_NUM (ei->pos); 
 
